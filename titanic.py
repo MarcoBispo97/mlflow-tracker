@@ -1,7 +1,8 @@
 """Example: train 5 classifiers on the Titanic dataset and track them with MLflow.
 
-    python titanic.py            # train, save to MLflow, build the overview, predict
-    python titanic.py --show     # same, and also open every chart in the browser
+Usage:
+    python titanic.py           # train, save to MLflow, build the overview, predict
+    python titanic.py --show    # same, and also open every chart in the browser
 """
 
 import argparse
@@ -32,53 +33,127 @@ DATA_FILE = "data/titanic.csv"
 
 
 def prepare(df):
-    """Same transformation for training and for new passengers: Sex -> 0/1.
-    Missing ages and scaling are handled inside each Pipeline."""
+    """Applies the transformation shared by training and new passengers.
+
+    Maps ``Sex`` to 0/1. Missing ages and scaling are handled inside each Pipeline.
+
+    Args:
+        df: Raw Titanic rows.
+
+    Returns:
+        pandas.DataFrame: A copy with ``Sex`` as 0/1.
+    """
     X = df.copy()
     X["Sex"] = X["Sex"].map({"male": 0, "female": 1})
     return X
 
 
 def create_models(data, random_state=42):
-    """5 pipelines tuned for a SMALL dataset with IMBALANCED classes:
-      - imbalance: more weight for the minority class (survived)
-      - small data: simpler models + regularization (avoids memorizing the training set)"""
+    """Creates 5 pipelines tuned for a SMALL dataset with IMBALANCED classes.
+
+    - Imbalance: more weight for the minority class (survived).
+    - Small data: simpler models and regularization (avoids memorizing the training set).
+
+    Args:
+        data: The ``DataSplit``; gives the features and the weight of the positive class.
+        random_state: Seed of every model.
+
+    Returns:
+        dict[str, sklearn.pipeline.Pipeline]: ``{name: pipeline}``.
+    """
 
     def pipeline(*steps):
-        preprocessor = ColumnTransformer([(
-            "numeric",
-            Pipeline([("imputer", SimpleImputer(strategy="median")), ("scaler", StandardScaler())]),
-            data.features,
-        )])
+        preprocessor = ColumnTransformer(
+            [
+                (
+                    "numeric",
+                    Pipeline(
+                        [
+                            ("imputer", SimpleImputer(strategy="median")),
+                            ("scaler", StandardScaler()),
+                        ]
+                    ),
+                    data.features,
+                )
+            ]
+        )
         return Pipeline([("preprocessor", preprocessor), *steps])
 
     return {
         "Polynomial Logistic Regression": pipeline(
             ("poly", PolynomialFeatures(degree=2, include_bias=False)),
-            ("classifier", LogisticRegression(C=0.5, class_weight="balanced", max_iter=200,
-                                              random_state=random_state)),
+            (
+                "classifier",
+                LogisticRegression(
+                    C=0.5, class_weight="balanced", max_iter=200, random_state=random_state
+                ),
+            ),
         ),
-        "SVM": pipeline(("classifier", SVC(
-            C=1.2, gamma="scale", class_weight="balanced", probability=True, random_state=random_state,
-        ))),
-        "Decision Tree": pipeline(("classifier", DecisionTreeClassifier(
-            max_depth=4, min_samples_leaf=4, class_weight="balanced", random_state=random_state,
-        ))),
-        "LightGBM": pipeline(("classifier", LGBMClassifier(
-            n_estimators=150, learning_rate=0.05, num_leaves=8, max_depth=7, min_child_samples=10,
-            subsample=0.8, subsample_freq=1, reg_lambda=1.0, class_weight="balanced",
-            random_state=random_state, verbose=-1,
-        ))),
-        "XGBoost": pipeline(("classifier", XGBClassifier(
-            n_estimators=150, learning_rate=0.05, max_depth=5, min_child_weight=3, subsample=0.8,
-            reg_lambda=1.0, scale_pos_weight=data.positive_weight, eval_metric="logloss",
-            random_state=random_state,
-        ))),
+        "SVM": pipeline(
+            (
+                "classifier",
+                SVC(
+                    C=1.2,
+                    gamma="scale",
+                    class_weight="balanced",
+                    probability=True,
+                    random_state=random_state,
+                ),
+            )
+        ),
+        "Decision Tree": pipeline(
+            (
+                "classifier",
+                DecisionTreeClassifier(
+                    max_depth=4,
+                    min_samples_leaf=4,
+                    class_weight="balanced",
+                    random_state=random_state,
+                ),
+            )
+        ),
+        "LightGBM": pipeline(
+            (
+                "classifier",
+                LGBMClassifier(
+                    n_estimators=150,
+                    learning_rate=0.05,
+                    num_leaves=8,
+                    max_depth=7,
+                    min_child_samples=10,
+                    subsample=0.8,
+                    subsample_freq=1,
+                    reg_lambda=1.0,
+                    class_weight="balanced",
+                    random_state=random_state,
+                    verbose=-1,
+                ),
+            )
+        ),
+        "XGBoost": pipeline(
+            (
+                "classifier",
+                XGBClassifier(
+                    n_estimators=150,
+                    learning_rate=0.05,
+                    max_depth=5,
+                    min_child_weight=3,
+                    subsample=0.8,
+                    reg_lambda=1.0,
+                    scale_pos_weight=data.positive_weight,
+                    eval_metric="logloss",
+                    random_state=random_state,
+                ),
+            )
+        ),
     }
 
 
 def main():
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    """Trains, tracks, builds the overview and predicts four new passengers."""
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     parser.add_argument("--show", action="store_true", help="open the charts in the browser")
     args = parser.parse_args()
 
@@ -96,16 +171,21 @@ def main():
     print(tracker.run_all(create_models(data), show=args.show).to_string(index=False), "\n")
 
     # 3. overview of the top 5 by F1
-    print(tracker.save_overview(n=5, metric="f1", show=args.show).round(3).to_string(index=False), "\n")
+    print(
+        tracker.save_overview(n=5, metric="f1", show=args.show).round(3).to_string(index=False),
+        "\n",
+    )
 
     # 4. inference with the .pkl of the best model
     model, best = tracker.load_best_model(metric="f1")
     print(f"Best model: {best['tags.model_name']} (F1 = {best['metrics.f1']:.3f})")
-    new_passengers = pd.DataFrame({
-        "Pclass": [1, 3, 2, 3],
-        "Sex": ["female", "male", "male", "female"],
-        "Age": [29, 22, None, 5],  # missing age: the pipeline fills it with the median
-    })
+    new_passengers = pd.DataFrame(
+        {
+            "Pclass": [1, 3, 2, 3],
+            "Sex": ["female", "male", "male", "female"],
+            "Age": [29, 22, None, 5],  # missing age: the pipeline fills it with the median
+        }
+    )
     X_new = prepare(new_passengers)[FEATURES].astype(float)
     result = new_passengers.copy()
     result["survives"] = model.predict(X_new).astype(bool)

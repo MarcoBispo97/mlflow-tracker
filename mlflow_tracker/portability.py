@@ -1,3 +1,5 @@
+"""Relative artifact paths, so the MLflow project works on any computer."""
+
 import re
 import sqlite3
 from pathlib import Path
@@ -7,12 +9,16 @@ class MLflowPortability:
     """Makes an MLflow project portable between computers.
 
     MLflow stores ABSOLUTE artifact paths in the database
-    (e.g. file:c:/Users/me/project/mlruns/1/...). On another computer that folder
-    does not exist and the UI cannot find models, charts or .pkl files.
+    (e.g. ``file:c:/Users/me/project/mlruns/1/...``). On another computer that folder
+    does not exist and the UI cannot find models, charts or ``.pkl`` files.
 
     This class replaces those paths with paths RELATIVE to the project folder
-    (e.g. mlruns/1/...), so everything works from any folder, as long as MLflow
-    (the script or `mlflow ui`) is started from inside the project folder.
+    (e.g. ``mlruns/1/...``), so everything works from any folder, as long as MLflow
+    (the script or ``mlflow ui``) is started from inside the project folder.
+
+    Args:
+        database: Path of the SQLite database used by MLflow.
+        artifacts_dir: Folder where MLflow saves the artifacts.
     """
 
     # (table, column, primary key) where MLflow stores artifact paths
@@ -23,20 +29,35 @@ class MLflowPortability:
     ]
     # LOCAL path up to ".../mlruns" (C:/..., /home/..., ./..., with or without "file:");
     # remote paths (s3://, http://, mlflow-artifacts:/) are left unchanged
-    PATTERN = re.compile(r"^(?:file:(?:///)?)?(?:[a-z]:|\.|[\\/])(?![\\/]{2}).*?[\\/]mlruns(?=[\\/]|$)", re.IGNORECASE)
+    PATTERN = re.compile(
+        r"^(?:file:(?:///)?)?(?:[a-z]:|\.|[\\/])(?![\\/]{2}).*?[\\/]mlruns(?=[\\/]|$)",
+        re.IGNORECASE,
+    )
 
     def __init__(self, database="mlflow.db", artifacts_dir="mlruns"):
         self.database = Path(database)
         self.artifacts_dir = Path(artifacts_dir)
 
     def relative(self, path):
-        """'file:c:/Users/x/project/mlruns/1/abc' -> 'mlruns/1/abc' (other paths unchanged)."""
+        """Converts a local artifact path to a relative one.
+
+        Args:
+            path: Artifact path, e.g. ``"file:c:/Users/x/project/mlruns/1/abc"``.
+
+        Returns:
+            The relative path (``"mlruns/1/abc"``), or ``path`` unchanged if it is
+            empty, remote or already relative.
+        """
         if not path or not self.PATTERN.match(path):
             return path
         return self.PATTERN.sub("mlruns", path).replace("\\", "/")
 
     def fix_database(self):
-        """Converts every artifact path in mlflow.db to a relative path."""
+        """Converts every artifact path in the database to a relative path.
+
+        Returns:
+            int: Number of rows changed.
+        """
         changed = 0
         with sqlite3.connect(self.database) as con:
             for table, column, key in self.COLUMNS:
@@ -48,28 +69,54 @@ class MLflowPortability:
         return changed
 
     def fix_mlmodel_files(self):
-        """Makes the (informative) 'artifact_path' field of the MLmodel files relative."""
+        """Makes the (informative) ``artifact_path`` field of the MLmodel files relative.
+
+        Returns:
+            int: Number of files changed.
+        """
         changed = 0
         for file in self.artifacts_dir.rglob("MLmodel"):
             text = file.read_text(encoding="utf-8")
-            new = re.sub(r"^(artifact_path: )(.+)$", lambda m: m.group(1) + self.relative(m.group(2)),
-                         text, flags=re.MULTILINE)
+            new = re.sub(
+                r"^(artifact_path: )(.+)$",
+                lambda m: m.group(1) + self.relative(m.group(2)),
+                text,
+                flags=re.MULTILINE,
+            )
             if new != text:
                 file.write_text(new, encoding="utf-8")
                 changed += 1
         return changed
 
     def fix(self, verbose=True):
-        """Fixes the database and the MLmodel files. Safe to run many times."""
+        """Fixes the database and the MLmodel files. Safe to run many times.
+
+        Args:
+            verbose: If True, prints how many paths were changed.
+
+        Returns:
+            int: Total number of rows and files changed (0 if there is no database yet).
+        """
         if not self.database.exists():
             return 0
         n_database, n_mlmodel = self.fix_database(), self.fix_mlmodel_files()
         if verbose and (n_database or n_mlmodel):
-            print(f"Portability: {n_database} database paths and {n_mlmodel} MLmodel files made relative.")
+            print(
+                f"Portability: {n_database} database paths and "
+                f"{n_mlmodel} MLmodel files made relative."
+            )
         return n_database + n_mlmodel
 
     def absolute_paths(self):
-        """Lists what still has an absolute path (should be empty)."""
+        """Lists the artifact paths that are still absolute.
+
+        Returns:
+            list[tuple[str, str, str]]: ``(table, column, path)`` items; should be empty.
+        """
         with sqlite3.connect(self.database) as con:
-            return [(t, c, v) for t, c, k in self.COLUMNS
-                    for (v,) in con.execute(f"SELECT {c} FROM {t}") if v and self.PATTERN.match(v)]
+            return [
+                (t, c, v)
+                for t, c, k in self.COLUMNS
+                for (v,) in con.execute(f"SELECT {c} FROM {t}")
+                if v and self.PATTERN.match(v)
+            ]

@@ -91,6 +91,9 @@ The only requirements are a binary target (0/1) and numeric features.
 | `titanic.py` | The example. It reads `data/titanic.csv`, converts `Sex` to 0/1, splits 60% train / 40% test, creates five pipelines (polynomial logistic regression, SVM, decision tree, LightGBM and XGBoost), tracks them, builds the overview and predicts four new passengers. |
 | `data/titanic.csv` | The Titanic dataset (891 passengers), kept in the repository so the example works offline. |
 | `requirements.txt` | The direct dependencies, with pinned versions. |
+| `requirements-dev.txt` | The formatting and linting tools (black and ruff), with pinned versions. |
+| `pyproject.toml` | Configuration of black (line length 100) and ruff (pycodestyle, pyflakes, import order, bugbear, pyupgrade and Google-style docstrings). |
+| `.github/workflows/ci.yml` | GitHub Actions: on every push it checks the formatting and the lint, then runs `titanic.py` twice and checks that the second run skips all 5 models. |
 
 ---
 
@@ -141,6 +144,24 @@ This is why `mlflow ui` must be started from inside the project folder.
 standard one and can be served as a REST API with `mlflow models serve`. The `.pkl` is the simplest
 way to use the model in any Python script with `joblib.load`. Only load `.pkl` files you created
 yourself, because unpickling a file can run code.
+
+---
+
+## Development
+
+The code is formatted with [black](https://black.readthedocs.io), linted with
+[ruff](https://docs.astral.sh/ruff/), and every module, class and public function has a
+[Google-style docstring](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)
+(checked by ruff's `D` rules).
+
+```bash
+pip install -r requirements-dev.txt
+black .            # format
+ruff check .       # lint, including the docstrings
+```
+
+The same checks run on GitHub Actions for every push and pull request, followed by an end-to-end
+run of the Titanic example.
 
 ---
 

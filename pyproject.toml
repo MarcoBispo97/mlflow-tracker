@@ -1,0 +1,21 @@
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/W: pycodestyle, F: pyflakes, I: import order, B: bugbear, UP: pyupgrade, D: docstrings
+select = ["E", "W", "F", "I", "B", "UP", "D"]
+ignore = [
+    "D107",  # __init__ arguments are documented in the class docstring (Google style)
+    "E501",  # line length is handled by black
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"titanic.py" = ["E402"]  # environment variables must be set before importing mlflow
