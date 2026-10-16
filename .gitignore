@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# created when you run the project
+mlflow.db
+mlruns/
+mlartifacts/
+overview.html
