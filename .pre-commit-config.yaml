@@ -1,0 +1,21 @@
+# Runs before every `git commit`. Install once with: pre-commit install
+repos:
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 26.10.1
+    hooks:
+      - id: black
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.1
+    hooks:
+      - id: ruff-check
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        # runs with the project's .venv, so the hook works from the terminal and from VS Code
+        entry: python scripts/run_tests.py
+        language: system
+        pass_filenames: false
+        always_run: true
