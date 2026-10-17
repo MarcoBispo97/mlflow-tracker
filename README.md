@@ -91,9 +91,12 @@ The only requirements are a binary target (0/1) and numeric features.
 | `titanic.py` | The example. It reads `data/titanic.csv`, converts `Sex` to 0/1, splits 60% train / 40% test, creates five pipelines (polynomial logistic regression, SVM, decision tree, LightGBM and XGBoost), tracks them, builds the overview and predicts four new passengers. |
 | `data/titanic.csv` | The Titanic dataset (891 passengers), kept in the repository so the example works offline. |
 | `requirements.txt` | The direct dependencies, with pinned versions. |
-| `requirements-dev.txt` | The formatting and linting tools (black and ruff), with pinned versions. |
+| `tests/` | 27 pytest tests: the split, the path conversion (Windows, Linux, remote and relative paths), the fingerprint, the artifacts of a run, skipping repeated models, loading the best `.pkl` and the overview. Each test uses its own temporary MLflow database. |
+| `scripts/run_tests.py` | Runs pytest with the project's `.venv`; used by the pre-commit hook, because git hooks do not activate the virtual environment. |
+| `requirements-dev.txt` | The development tools (black, ruff, pytest and pre-commit), with pinned versions. |
+| `.pre-commit-config.yaml` | Runs black, ruff and pytest before every `git commit`. |
 | `pyproject.toml` | Configuration of black (line length 100) and ruff (pycodestyle, pyflakes, import order, bugbear, pyupgrade and Google-style docstrings). |
-| `.github/workflows/ci.yml` | GitHub Actions: on every push it checks the formatting and the lint, then runs `titanic.py` twice and checks that the second run skips all 5 models. |
+| `.github/workflows/ci.yml` | GitHub Actions: on every push it checks the formatting and the lint, runs the tests, then runs `titanic.py` twice and checks that the second run skips all 5 models. |
 
 ---
 
@@ -155,9 +158,11 @@ The code is formatted with [black](https://black.readthedocs.io), linted with
 (checked by ruff's `D` rules).
 
 ```bash
-pip install -r requirements-dev.txt
+pip install -r requirements.txt -r requirements-dev.txt
 black .            # format
 ruff check .       # lint, including the docstrings
+pytest             # 27 tests
+pre-commit install # run all of the above before every git commit
 ```
 
 The same checks run on GitHub Actions for every push and pull request, followed by an end-to-end
