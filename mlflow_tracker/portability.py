@@ -30,7 +30,7 @@ class MLflowPortability:
     # LOCAL path up to ".../mlruns" (C:/..., /home/..., ./..., with or without "file:");
     # remote paths (s3://, http://, mlflow-artifacts:/) are left unchanged
     PATTERN = re.compile(
-        r"^(?:file:(?:///)?)?(?:[a-z]:|\.|[\\/])(?![\\/]{2}).*?[\\/]mlruns(?=[\\/]|$)",
+        r"^(?:file:(?://)?)?(?:[a-z]:|\.|[\\/])(?![\\/]{2}).*?[\\/]mlruns(?=[\\/]|$)",
         re.IGNORECASE,
     )
 
