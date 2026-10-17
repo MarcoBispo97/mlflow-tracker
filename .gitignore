@@ -7,4 +7,4 @@ __pycache__/
 mlflow.db
 mlruns/
 mlartifacts/
-overview.html
+overview.png
