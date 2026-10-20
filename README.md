@@ -52,7 +52,7 @@ graded**:
 | | `ClassificationTracker` | `RegressionTracker` |
 |---|---|---|
 | Metrics | accuracy, precision, recall, F1, ROC AUC | MAE, RMSE, R² |
-| Charts | confusion matrix, ROC curve | predicted vs. actual, residuals, residuals vs. predicted, actual vs. predicted distribution |
+| Charts | confusion matrix, ROC curve, wrong predictions table | predicted vs. actual, residuals, residuals vs. predicted, actual vs. predicted distribution |
 | Best model | highest F1 | lowest RMSE |
 | SHAP explains | the probability of class 1 | the predicted value |
 | Learning curve | the 5 metrics on train and test, with 20%...100% of the training rows | MAE, RMSE and R² on train and test, with 20%...100% of the training rows |
@@ -75,7 +75,9 @@ flowchart TD
 1. Computes a **fingerprint** (hash of the name, hyperparameters and data). If a run with that
    fingerprint exists, the model is skipped.
 2. Trains the model, then the child class grades it: `compute_metrics()` and `log_charts()`.
-3. Saves the model, every hyperparameter, the learning curve and two SHAP charts in one MLflow run.
+3. Saves the train and test datasets, the model, every hyperparameter, the learning curve and two
+   SHAP charts in one MLflow run named `<project>_<model>_<date>_<time>`, for example
+   `titanic_lightgbm_20261019_201530`.
 4. After all models, saves a **Top 5 comparison** run with 6 charts: metrics bars, metrics heatmap,
    ranking, learning curves of the 5 models together, training time and SHAP importance per model.
 
@@ -96,8 +98,9 @@ pip install -r requirements.txt
 
 The trained models are committed (`mlflow.db` and `mlruns/`), so you can open the MLflow UI right
 away (see below). To train again, open `notebooks/titanic.ipynb` or `notebooks/house_prices.ipynb`
-(in VS Code or Jupyter) and run all cells. Each notebook has the same 5 steps: data, models, train and track, compare, and use the
-best model.
+(in VS Code or Jupyter) and run all cells. Each notebook has the same steps: data, models, train and track, compare, use the best
+model, and a **production** example that loads the model from MLflow by its id
+(`mlflow.pyfunc.load_model("models:/<id>")`) and scores 5 rows from the data feed.
 
 Results on the test set:
 
@@ -128,7 +131,9 @@ from regression import RegressionTracker   # or: from classification import Clas
 X_train, X_test, y_train, y_test = train_test_split(df[["a", "b", "c"]], df["price"], test_size=0.2)
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
-tracker = RegressionTracker("my_experiment", X_train, X_test, y_train, y_test)
+tracker = RegressionTracker(
+    "my_experiment", X_train, X_test, y_train, y_test, data_source="data/my_data.csv"
+)
 tracker.run_all({"Random Forest": RandomForestRegressor(), "Linear": LinearRegression()})
 
 tracker.top_models()          # ranking, best first
@@ -167,6 +172,20 @@ A new kind of problem (e.g. multiclass) only needs a new child class with `METRI
 work and differ only in how a model is graded. The shared code lives once in `BaseTracker`, and
 each child class fills in three methods (`compute_metrics`, `log_charts` and `predict_for_shap`) and three settings
 (`METRICS`, `BEST`, `LOWER_IS_BETTER`). Reading one tracker explains the other.
+
+**Datasets in MLflow.** Each run logs its training and test data with `mlflow.log_input`, so they
+appear in the *Datasets* field of the MLflow UI with their schema, a profile and a hash (digest).
+MLflow stores this description, not the rows: the rows stay in `data/`, and `data_source` is saved
+as a relative path (`data/titanic.csv`), so it is valid on any machine.
+
+**Studying the mistakes.** For classification, each run saves the test rows the model predicted
+wrong as a pandas-style HTML table (`errors/wrong_predictions.html`, plus a CSV), as a
+`<project>_wrong_predictions` dataset and as the `n_wrong` metric. Opening it in the MLflow UI shows
+which passengers fool the model.
+
+**Readable run names.** Every run is named `<project>_<model>_<date>_<time>` in lowercase with
+underscores, so the runs sort by time and can be traced back to the moment they were trained. The
+plain model name is kept in a `model` tag, which the ranking uses.
 
 **Never save the same model twice.** Running a notebook many times usually fills MLflow with
 identical runs. Before training, the tracker computes a *fingerprint*: a SHA-256 hash of the model
