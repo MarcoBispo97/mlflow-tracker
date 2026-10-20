@@ -19,7 +19,7 @@ jobs:
       - run: ruff check --output-format github .
 
   test:
-    name: Tests (pytest) and the Titanic example
+    name: Tests (pytest) and the notebooks with the committed models
     runs-on: ubuntu-latest
     needs: lint
     steps:
@@ -30,7 +30,7 @@ jobs:
           cache: pip
       - run: pip install -r requirements.txt -r requirements-dev.txt
       - run: pytest
-      # 1st run trains and saves the 5 models; 2nd run must skip all of them
-      - run: python titanic.py
-      - run: python titanic.py | tee second_run.txt
-      - run: test "$(grep -c 'nothing changed' second_run.txt)" -eq 5
+      # the trained models are committed: on a fresh clone every model must be found and skipped,
+      # which also checks that the paths saved on Windows work on Linux
+      - run: jupyter nbconvert --to notebook --execute --stdout notebooks/*.ipynb > run.txt
+      - run: test "$(grep -c '\] nothing changed' run.txt)" -eq 14

@@ -1,5 +1,7 @@
-# formatting, linting, tests and git hooks (used by CI)
+# formatting, linting, tests, git hooks and running the notebooks (used by CI)
 black==26.10.1
 ruff==0.17.1
 pytest==9.1.1
 pre-commit==4.7.0
+nbconvert==7.17.2
+ipykernel==7.4.0
