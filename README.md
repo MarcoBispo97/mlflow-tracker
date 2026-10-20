@@ -4,15 +4,80 @@
 
 #### Description:
 
-**MLflow Tracker** is a single Python file (`mlflow_tracker.py`) that trains binary classification
-models with scikit-learn and saves *everything* about each model to [MLflow](https://mlflow.org):
-the trained model, metrics, charts (seaborn/matplotlib), SHAP explanations and the features used.
-It never saves the same model twice, it draws a chart that compares the best models, and the whole
-project can be copied to another computer without breaking MLflow.
+**MLflow Tracker** trains scikit-learn models and saves *everything* about each one to
+[MLflow](https://mlflow.org): the trained model, all its hyperparameters, its metrics, charts
+(seaborn/matplotlib), a learning curve and SHAP explanations. It never saves the same model twice,
+it compares the top 5 models automatically, and the whole project can be copied to another
+computer without breaking MLflow.
 
-It is generic: it works with any scikit-learn model or `Pipeline` that has `predict_proba`. To show it
-working, the repository includes `titanic.py`, which trains five classifiers on the classic
-**Titanic** dataset (who survived the sinking?) with a single command.
+It has two trackers built on the same base: one for **classification** and one for
+**regression**. Two notebooks show them working on classic datasets:
+
+- **Titanic** (classification): who survived the sinking?
+- **California house prices** (regression): how much is a house worth?
+
+---
+
+## Architecture
+
+```
+mlflow-tracker/
+├── utils.py                 # BaseTracker: everything the two trackers share
+├── classification.py        # ClassificationTracker(BaseTracker): metrics + charts only
+├── regression.py            # RegressionTracker(BaseTracker): metrics + charts only
+├── notebooks/
+│   ├── titanic.ipynb        # uses classification.py
+│   └── house_prices.ipynb   # uses regression.py
+├── data/
+│   ├── titanic.csv
+│   └── house_prices.csv
+└── tests/test_trackers.py
+```
+
+```mermaid
+flowchart LR
+    NB1["notebooks/titanic.ipynb"] -->|uses| CLF["classification.py<br/>ClassificationTracker"]
+    NB2["notebooks/house_prices.ipynb"] -->|uses| REG["regression.py<br/>RegressionTracker"]
+    CLF -->|inherits| BASE["utils.py<br/>BaseTracker"]
+    REG -->|inherits| BASE
+    BASE -->|runs, params, metrics| DB[("mlflow.db")]
+    BASE -->|models, charts, SHAP| ART[("mlruns/")]
+    DB --> UI["MLflow UI"]
+    ART --> UI
+```
+
+`BaseTracker` (in `utils.py`) does all the MLflow work. Each child class only says **how a model is
+graded**:
+
+| | `ClassificationTracker` | `RegressionTracker` |
+|---|---|---|
+| Metrics | accuracy, precision, recall, F1, ROC AUC | MAE, RMSE, R² |
+| Charts | confusion matrix, ROC curve | predicted vs. actual, residuals, residuals vs. predicted, actual vs. predicted distribution |
+| Best model | highest F1 | lowest RMSE |
+| SHAP explains | the probability of class 1 | the predicted value |
+| Learning curve | the 5 metrics on train and test, with 20%...100% of the training rows | MAE, RMSE and R² on train and test, with 20%...100% of the training rows |
+
+What `run_all(models)` does:
+
+```mermaid
+flowchart TD
+    A["run(name, model)"] --> B{"fingerprint<br/>already saved?"}
+    B -- yes --> C["skip"]
+    B -- no --> D["fit the model"]
+    D --> E["compute_metrics + log_charts<br/>(child class)"]
+    E --> F["learning curve, SHAP,<br/>hyperparameters, model"]
+    C --> G{"more models?"}
+    F --> G
+    G -- yes --> A
+    G -- no --> H["log_comparison:<br/>Top 5 comparison run<br/>(only if the top 5 changed)"]
+```
+
+1. Computes a **fingerprint** (hash of the name, hyperparameters and data). If a run with that
+   fingerprint exists, the model is skipped.
+2. Trains the model, then the child class grades it: `compute_metrics()` and `log_charts()`.
+3. Saves the model, every hyperparameter, the learning curve and two SHAP charts in one MLflow run.
+4. After all models, saves a **Top 5 comparison** run with 6 charts: metrics bars, metrics heatmap,
+   ranking, learning curves of the 5 models together, training time and SHAP importance per model.
 
 ---
 
@@ -27,34 +92,29 @@ cd mlflow-tracker
 python -m venv .venv
 source .venv/bin/activate          # Windows PowerShell: .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-
-python titanic.py
 ```
 
-The script prints the train/test split, trains the five models, prints the top 5 ranking and
-predicts the survival of four new passengers with the best model:
+The trained models are committed (`mlflow.db` and `mlruns/`), so you can open the MLflow UI right
+away (see below). To train again, open `notebooks/titanic.ipynb` or `notebooks/house_prices.ipynb`
+(in VS Code or Jupyter) and run all cells. Each notebook has the same 5 steps: data, models, train and track, compare, and use the
+best model.
 
-```
-Best model: LightGBM (F1 = 0.745)
- Pclass    Sex  Age  survives  probability
-      1 female 29.0      True        0.954
-      3   male 22.0     False        0.100
-      2   male  NaN     False        0.173
-      3 female  5.0      True        0.874
-```
+Results on the test set:
 
-Then open the MLflow UI **from inside the project folder** and go to the `titanic` experiment:
+| Notebook | Best model | Score |
+|---|---|---|
+| Titanic | LightGBM | F1 = 0.745, ROC AUC = 0.840 |
+| House prices | LightGBM | RMSE = 0.450 ($45,000), R² = 0.846 |
+
+Run a notebook a second time and nothing is trained again: every model prints
+`nothing changed -> skipped`. Change a hyperparameter and only that model gets a new run.
+
+Then open the MLflow UI **from the project folder**:
 
 ```bash
 mlflow ui --backend-store-uri sqlite:///mlflow.db
 # open http://127.0.0.1:5000
 ```
-
-The chart that compares the top 5 models is saved as `overview.png`.
-
-Run `python titanic.py` a second time and nothing is trained again: every model prints
-`nothing changed -> skipped`. Change a hyperparameter in `titanic.py` and only that
-model gets a new run.
 
 ---
 
@@ -63,19 +123,24 @@ model gets a new run.
 ```python
 import mlflow
 from sklearn.model_selection import train_test_split
-from mlflow_tracker import MLflowTracker
+from regression import RegressionTracker   # or: from classification import ClassificationTracker
 
-X_train, X_test, y_train, y_test = train_test_split(df[["a", "b", "c"]], df["label"], test_size=0.3)
+X_train, X_test, y_train, y_test = train_test_split(df[["a", "b", "c"]], df["price"], test_size=0.2)
 
 mlflow.set_tracking_uri("sqlite:///mlflow.db")
-tracker = MLflowTracker("my_experiment", X_train, X_test, y_train, y_test, labels=("No", "Yes"))
-tracker.run_all({"Random Forest": RandomForestClassifier(), "SVM": my_svm_pipeline})
+tracker = RegressionTracker("my_experiment", X_train, X_test, y_train, y_test)
+tracker.run_all({"Random Forest": RandomForestRegressor(), "Linear": LinearRegression()})
 
-tracker.save_overview(n=5, metric="f1")             # overview.png
-model, best_run = tracker.load_best_model(metric="f1")
+tracker.top_models()          # ranking, best first
+tracker.comparison_charts()   # the 6 charts that compare the top 5
+model, best_run = tracker.load_best_model()
 ```
 
-The only requirements are a binary target (0/1), numeric features and a model with `predict_proba`.
+The features must be numeric. For classification the target must be 0/1 and the model needs
+`predict_proba` (for an SVM, use `SVC(probability=True)`).
+
+A new kind of problem (e.g. multiclass) only needs a new child class with `METRICS`, `BEST`,
+`compute_metrics()`, `log_charts()` and `predict_for_shap()`.
 
 ---
 
@@ -83,84 +148,84 @@ The only requirements are a binary target (0/1), numeric features and a model wi
 
 | File | What it does |
 |---|---|
-| `mlflow_tracker.py` | Everything in one file. `MLflowTracker.run()` computes a fingerprint of the model, skips it if it was already saved, and otherwise trains it and logs the model, the metrics (accuracy, precision, recall, F1, ROC AUC), a confusion matrix and a ROC curve, two SHAP charts and the features. `top_models()`, `load_best_model()` and `save_overview()` compare and reuse the saved models. `make_paths_relative()` keeps the project portable. |
-| `titanic.py` | The example. It reads `data/titanic.csv`, converts `Sex` to 0/1, splits 60% train / 40% test, creates five pipelines (polynomial logistic regression, SVM, decision tree, LightGBM and XGBoost), tracks them, saves the overview and predicts four new passengers. |
-| `data/titanic.csv` | The Titanic dataset (891 passengers), kept in the repository so the example works offline. |
-| `tests/test_mlflow_tracker.py` | pytest tests: the fingerprint, the artifacts of a run, skipping repeated models, the ranking, loading the best model and the relative paths. Each test uses its own temporary MLflow database. |
-| `requirements.txt` / `requirements-dev.txt` | The dependencies and the development tools (black, ruff, pytest, pre-commit), with pinned versions. |
-| `pyproject.toml` | Configuration of black, ruff and pytest. |
-| `.pre-commit-config.yaml` | Runs black and ruff before every `git commit`. |
-| `.github/workflows/ci.yml` | GitHub Actions: checks the formatting and the lint, runs the tests, then runs `titanic.py` twice and checks that the second run skips all 5 models. |
+| `utils.py` | `BaseTracker`: fingerprint, training, saving the model and its hyperparameters, learning curve, SHAP, ranking (`top_models`), the top 5 comparison (`comparison_charts`, `log_comparison`) and `load_best_model`. Also `make_paths_relative()`, which keeps the project portable. |
+| `classification.py` | `ClassificationTracker`: classification metrics, confusion matrix and ROC curve. |
+| `regression.py` | `RegressionTracker`: regression metrics, predicted vs. actual and residuals charts. |
+| `notebooks/titanic.ipynb` | Titanic: 7 classifiers (polynomial logistic regression, SVM, decision tree, LightGBM, XGBoost, random forest, k-nearest neighbors). |
+| `notebooks/house_prices.ipynb` | California house prices: 7 regressors (linear regression, decision tree, random forest, LightGBM, XGBoost, gradient boosting, k-nearest neighbors). |
+| `mlflow.db`, `mlruns/` | The MLflow database and artifacts of every trained model, committed so the results can be browsed without training. |
+| `data/` | The two datasets, kept in the repository so the notebooks work offline. |
+| `tests/test_trackers.py` | pytest tests for both trackers: metrics and charts, the fingerprint, skipping repeated models, the ranking direction, loading the best model and the relative paths. |
+| `requirements.txt` / `requirements-dev.txt` | The dependencies and the development tools, with pinned versions. |
+| `.github/workflows/ci.yml` | GitHub Actions: black and ruff, pytest, then runs both notebooks and checks that all 14 committed models are found and skipped (this also checks the relative paths on Linux). |
 
 ---
 
 ## Design decisions
 
-**Never save the same model twice.** Running a script many times usually fills MLflow with
+**A base class and two small children.** Classification and regression trackers do the same MLflow
+work and differ only in how a model is graded. The shared code lives once in `BaseTracker`, and
+each child class fills in three methods (`compute_metrics`, `log_charts` and `predict_for_shap`) and three settings
+(`METRICS`, `BEST`, `LOWER_IS_BETTER`). Reading one tracker explains the other.
+
+**Never save the same model twice.** Running a notebook many times usually fills MLflow with
 identical runs. Before training, the tracker computes a *fingerprint*: a SHA-256 hash of the model
 name, its hyperparameters and the content of the train and test data. If a run with that
 fingerprint already exists, the model is skipped. I hash the data content, not just its shape,
 because a different row in the training set must produce a different model.
 
-**Simple charts.** The charts are PNG images made with seaborn and matplotlib (and sklearn's
-`RocCurveDisplay` and SHAP's own beeswarm plot), saved with `mlflow.log_figure`. They are easy to
-read, easy to change and need no extra JavaScript.
+**Learning curves for any model.** Random forests, KNN or SVMs do not train in epochs, so they
+have no loss-per-epoch curve. Instead, the tracker trains copies of the model on 20%, 40%, ... 100%
+of the training rows and measures every metric on those rows (train) and on the test set. This
+works for every model and shows overfitting: a big gap between the train and test lines. The
+points are also saved as MLflow metrics with a `step`, so the MLflow UI can draw them too.
 
-**Model-agnostic SHAP.** Tree explainers only work with tree models, and each model type needs a
-different explainer. I used `shap.Explainer` with an `Independent` masker over a function that
-calls `predict_proba`, so the same code explains a logistic regression, an SVM or XGBoost. The
-trade-off is speed, so the explanation uses a sample of 200 test rows against a background of 100
-training rows. The mean |SHAP| of each feature is also logged as a metric, which makes it possible
-to compare feature importance between models in the MLflow UI.
+**Ranking in the right direction.** A higher F1 is better, but a lower RMSE is better. Each tracker
+lists its error metrics in `LOWER_IS_BETTER`, so `top_models()` sorts ascending for them.
 
-**Small and imbalanced data.** Only 38% of the passengers survived and there are fewer than 900
-rows. The models use class weights (`class_weight="balanced"` or XGBoost's `scale_pos_weight`,
-computed from the training set) and conservative hyperparameters: shallow trees, few leaves, a low
-learning rate and regularization. The split is stratified, so train and test keep the same 38%.
+**Simple charts.** The charts are PNG images made with seaborn and matplotlib (plus sklearn's
+`RocCurveDisplay` and SHAP's beeswarm plot), saved with `mlflow.log_figure`.
 
-**Preprocessing inside the pipeline.** Missing ages are filled with the median and the features are
-standardized inside each `Pipeline`, so these steps learn only from the training set (no data
-leakage) and are saved together with the model. The only step outside the pipeline is mapping
-`Sex` to 0/1, a fixed rule that is applied the same way to new passengers.
+**Model-agnostic SHAP.** Each model type needs a different SHAP explainer. I used `shap.Explainer`
+over a plain prediction function, so the same code explains a linear model, an SVM or XGBoost. The
+trade-off is speed, so it explains 200 test rows against a background of 100 training rows.
 
-**SQLite and portable paths.** MLflow 3 deprecated the plain folder backend, so runs and metrics go
-to `mlflow.db` (SQLite) and artifacts to `mlruns/`. MLflow stores absolute artifact paths such as
-`file:C:/Users/me/project/mlruns/...`, which break as soon as the folder is moved or opened on
-another computer. `make_paths_relative()` rewrites them as `mlruns/...` with a plain SQL `REPLACE`.
-This is why `mlflow ui` must be started from inside the project folder.
+**Preprocessing inside the pipeline.** Missing values are filled and features are scaled inside each
+`Pipeline`, so these steps learn only from the training set (no data leakage) and are saved
+together with the model.
 
-**Loading a model.** `load_best_model()` uses `mlflow.sklearn.load_model("models:/<id>")`; the same
-model can be served as a REST API with `mlflow models serve`. Models are saved with cloudpickle
-because MLflow's default format (skops) refuses tree models; only load models you created yourself,
-because unpickling a file can run code.
+**SQLite and portable paths.** Runs and metrics go to `mlflow.db` (SQLite) and artifacts to
+`mlruns/`. MLflow stores absolute artifact paths such as `file:C:/Users/me/project/mlruns/...`,
+which break when the folder is moved to another computer. `make_paths_relative()` rewrites them as
+`mlruns/...` with a plain SQL `REPLACE`. This is why `mlflow ui` must be started from the project
+folder.
+
+**Committing the models.** `mlflow.db` and `mlruns/` are in the repository, so anyone can clone it
+and browse every model, chart and metric in the MLflow UI without training. This works only because
+the artifact paths are relative (see above). The trade-off is a bigger repository (about 25 MB).
+
+**Loading a model.** `load_best_model()` uses `mlflow.sklearn.load_model("models:/<id>")`. Models
+are saved with cloudpickle because MLflow's default format (skops) refuses tree models; only load
+models you created yourself, because unpickling a file can run code.
 
 ---
 
 ## Development
 
-The code is formatted with [black](https://black.readthedocs.io), linted with
-[ruff](https://docs.astral.sh/ruff/), and every module, class and public function has a
-[Google-style docstring](https://google.github.io/styleguide/pyguide.html#38-comments-and-docstrings)
-(checked by ruff's `D` rules).
-
 ```bash
 pip install -r requirements.txt -r requirements-dev.txt
 black .            # format
-ruff check .       # lint, including the docstrings
+ruff check .       # lint (also checks the notebooks)
 pytest             # tests
 pre-commit install # run black and ruff before every git commit
 ```
-
-The same checks run on GitHub Actions for every push and pull request, followed by an end-to-end
-run of the Titanic example.
 
 ---
 
 ## Limitations
 
-- Binary classification only (precision, recall and F1 are computed for the positive class).
+- Classification is binary only (precision, recall and F1 are for the positive class).
 - The evaluation is a single holdout split; cross-validation would give more stable metrics.
-- The model needs `predict_proba` (for an SVM, use `SVC(probability=True)`).
 
 ---
 
@@ -169,9 +234,9 @@ run of the Titanic example.
 <!-- Edit this paragraph so it describes exactly how you used AI tools. -->
 I designed and built this project in Jupyter notebooks while studying MLflow. I used Claude
 (Anthropic's AI assistant) as a helper: to discuss design ideas, debug problems (such as the
-absolute paths stored by MLflow), and, at the end, to help me move the code from my notebook
-into this project, later simplify it into a single file, translate the identifiers and comments from Portuguese to English, and draft
-this README. I reviewed, ran and tested all of the code.
+absolute paths stored by MLflow), and to help me move the code from my notebooks into this
+project, simplify it into a base class with two trackers, translate it from Portuguese to English,
+and draft this README. I reviewed, ran and tested all of the code.
 
 ---
 
