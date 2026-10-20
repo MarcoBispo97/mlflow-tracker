@@ -138,8 +138,8 @@ class BaseTracker:
         return metrics
 
     def run_name(self, name):
-        """Project + date and time + model, e.g. ``titanic_20261019_201530_lightgbm``."""
-        return f"{slug(self.experiment.name)}_{datetime.now():%Y%m%d_%H%M%S}_{slug(name)}"
+        """Project + model + date and time, e.g. ``titanic_lightgbm_20261019_201530``."""
+        return f"{slug(self.experiment.name)}_{slug(name)}_{datetime.now():%Y%m%d_%H%M%S}"
 
     def log_datasets(self):
         """Logs the training and test data in the "Datasets" field of the current run.

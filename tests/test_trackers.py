@@ -97,8 +97,8 @@ def test_regression_run_saves_metrics_and_charts(regressor):
 def test_run_name_and_datasets(classifier):
     classifier.run("K-Nearest Neighbors", LogisticRegression())
     run = mlflow.get_run(classifier.top_models().loc[0, "run_id"])
-    # project + date and time + model, joined by underscores
-    assert re.fullmatch(r"clf_\d{8}_\d{6}_k_nearest_neighbors", run.info.run_name)
+    # project + model + date and time, joined by underscores
+    assert re.fullmatch(r"clf_k_nearest_neighbors_\d{8}_\d{6}", run.info.run_name)
     assert run.data.tags["model"] == "K-Nearest Neighbors"
 
     datasets = {d.dataset.name: d.dataset for d in run.inputs.dataset_inputs}
