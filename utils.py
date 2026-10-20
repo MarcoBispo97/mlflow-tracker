@@ -6,6 +6,7 @@ classes only say how a model is graded: its metrics and its charts.
 """
 
 import hashlib
+import os
 import re
 import sqlite3
 import time
@@ -530,23 +531,37 @@ def log_chart(fig, path):
 
 
 def make_paths_relative(database="mlflow.db"):
-    """Makes the artifact paths saved in the MLflow database relative.
+    """Makes the paths saved in the MLflow database relative to the project folder.
 
     MLflow saves absolute paths (e.g. ``file:C:/Users/me/project/mlruns/1/...``), which
     break when the project is moved to another folder or computer. This turns them into
     ``mlruns/1/...``, so MLflow (the notebooks or ``mlflow ui``) must be started from the
-    project folder.
+    project folder. It also cleans the ``mlflow.source.name`` tag (where the code ran),
+    which is only informative but would show the folder of the person who trained.
     """
     if not Path(database).exists():
         return
     project = Path.cwd()
-    prefixes = [f"file:{project.as_posix()}/", f"{project.as_uri()}/"]  # Windows and Linux
+    # how MLflow writes the project folder: "file:C:/..." on Windows, a plain "/home/..."
+    # on Linux, "file:///..." or "C:\..." (tags); the "file:" forms go first so no
+    # "file:" is left behind
+    prefixes = [
+        f"file:{project.as_posix()}/",
+        f"{project.as_uri()}/",
+        f"{project.as_posix()}/",
+        f"{project}{os.sep}",
+    ]
     columns = [
         ("experiments", "artifact_location"),
         ("runs", "artifact_uri"),
         ("logged_models", "artifact_location"),
+        ("tags", "value"),
+        ("logged_model_tags", "tag_value"),
     ]
     with sqlite3.connect(database) as con:
+        tables = {name for (name,) in con.execute("SELECT name FROM sqlite_master")}
         for table, column in columns:
+            if table not in tables:  # other MLflow versions may not have every table
+                continue
             for prefix in prefixes:
                 con.execute(f"UPDATE {table} SET {column} = REPLACE({column}, ?, '')", (prefix,))

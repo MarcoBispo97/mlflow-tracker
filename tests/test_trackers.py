@@ -227,3 +227,30 @@ def test_artifact_paths_are_relative(classifier):
     assert mlflow.get_run(run_id).info.artifact_uri.startswith("mlruns/")
     experiment = mlflow.get_experiment(classifier.experiment.experiment_id)
     assert experiment.artifact_location == f"mlruns/{experiment.experiment_id}"
+
+
+def test_make_paths_relative_handles_every_path_format(tmp_path, monkeypatch):
+    import sqlite3
+
+    monkeypatch.chdir(tmp_path)  # make_paths_relative works on the current folder
+    project = tmp_path.as_posix()
+    paths = {
+        "windows": f"file:{project}/mlruns/1/a",  # how MLflow writes it on Windows
+        "linux": f"{project}/mlruns/1/b",  # on Linux: no "file:"
+        "uri": f"{tmp_path.as_uri()}/mlruns/1/c",
+        "relative": "mlruns/1/d",
+    }
+    with sqlite3.connect("mlflow.db") as con:
+        con.execute("CREATE TABLE experiments (artifact_location TEXT)")
+        con.execute("CREATE TABLE runs (artifact_uri TEXT)")
+        con.execute("CREATE TABLE logged_models (artifact_location TEXT)")
+        con.execute("CREATE TABLE tags (value TEXT)")
+        con.executemany("INSERT INTO runs VALUES (?)", [(p,) for p in paths.values()])
+        # where the code ran, in the native format of the OS (e.g. C:\...\script.py)
+        con.execute("INSERT INTO tags VALUES (?)", (str(tmp_path / "notebooks" / "run.py"),))
+    make_paths_relative()
+    with sqlite3.connect("mlflow.db") as con:
+        fixed = sorted(p for (p,) in con.execute("SELECT artifact_uri FROM runs"))
+        (tag,) = con.execute("SELECT value FROM tags").fetchone()
+    assert fixed == ["mlruns/1/a", "mlruns/1/b", "mlruns/1/c", "mlruns/1/d"]
+    assert tag == os.path.join("notebooks", "run.py")  # no folder of the person who trained
