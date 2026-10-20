@@ -6,8 +6,10 @@ classes only say how a model is graded: its metrics and its charts.
 """
 
 import hashlib
+import re
 import sqlite3
 import time
+from datetime import datetime
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -93,7 +95,8 @@ class BaseTracker:
             print(f"[{name}] nothing changed -> skipped")
             return {m: previous.iloc[0][f"metrics.{m}"] for m in self.METRICS}
 
-        with mlflow.start_run(run_name=name):
+        with mlflow.start_run(run_name=self.run_name(name)):
+            mlflow.set_tag("model", name)
             start = time.perf_counter()
             model.fit(self.X_train, self.y_train)
             mlflow.log_metric("train_seconds", time.perf_counter() - start)
@@ -128,6 +131,10 @@ class BaseTracker:
         make_paths_relative()
         print(f"[{name}] saved")
         return metrics
+
+    def run_name(self, name):
+        """Project + date and time + model, e.g. ``titanic_20261019_201530_lightgbm``."""
+        return f"{slug(self.experiment.name)}_{datetime.now():%Y%m%d_%H%M%S}_{slug(name)}"
 
     @staticmethod
     def hyperparameters(model):
@@ -251,7 +258,7 @@ class BaseTracker:
             runs = runs[runs["tags.fingerprint"].notna()]  # only training runs have a fingerprint
         if runs.empty:
             return pd.DataFrame(columns=["model", *self.METRICS, "run_id", "model_id"])
-        table = pd.DataFrame({"model": runs["tags.mlflow.runName"]})
+        table = pd.DataFrame({"model": runs["tags.model"]})
         for m in self.METRICS:
             table[m] = runs[f"metrics.{m}"]
         table["run_id"] = runs["run_id"]
@@ -354,13 +361,18 @@ class BaseTracker:
             print(f"Top {n} did not change -> comparison already saved")
             return
 
-        with mlflow.start_run(run_name=f"Top {n} comparison"):
+        with mlflow.start_run(run_name=self.run_name(f"top {n} comparison")):
             mlflow.set_tag("top_run_ids", top_ids)
             for file, fig in self.comparison_charts(n).items():
                 log_chart(fig, f"comparison/{file}")
             mlflow.log_text(top.to_csv(index=False), "comparison/top_models.csv")
         make_paths_relative()
         print(f"Top {n} comparison saved (best: {top.loc[0, 'model']})")
+
+
+def slug(text):
+    """Lowercase words joined by underscores: ``"K-Nearest Neighbors"`` -> ``"k_nearest_neighbors"``."""
+    return re.sub(r"[^a-z0-9]+", "_", text.lower()).strip("_")
 
 
 def plot_curves(data, hue):

@@ -1,6 +1,7 @@
 """Tests for ClassificationTracker and RegressionTracker, each in an empty MLflow project."""
 
 import os
+import re
 
 import pandas as pd
 import pytest
@@ -92,6 +93,14 @@ def test_regression_run_saves_metrics_and_charts(regressor):
     }
 
 
+def test_run_name(classifier):
+    classifier.run("K-Nearest Neighbors", LogisticRegression())
+    run = mlflow.get_run(classifier.top_models().loc[0, "run_id"])
+    # project + date and time + model, joined by underscores
+    assert re.fullmatch(r"clf_\d{8}_\d{6}_k_nearest_neighbors", run.info.run_name)
+    assert run.data.tags["model"] == "K-Nearest Neighbors"
+
+
 def test_learning_curve_has_one_point_per_size(regressor):
     regressor.run("Linear", LinearRegression())
     run_id = regressor.top_models().loc[0, "run_id"]
@@ -136,7 +145,7 @@ def test_regression_ranks_lower_rmse_first(regressor):
 def test_run_all_saves_one_comparison_per_top(regressor):
     def comparison_runs():
         runs = mlflow.search_runs([regressor.experiment.experiment_id])
-        return runs[runs["tags.mlflow.runName"] == "Top 5 comparison"]
+        return runs[runs["tags.top_run_ids"].notna()]
 
     models = {"Linear": LinearRegression(), "Tree": DecisionTreeRegressor(max_depth=2)}
     regressor.run_all(models)
