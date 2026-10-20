@@ -18,7 +18,6 @@ ignore = [
 convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
-"titanic.py" = ["E402"]  # environment variables must be set before importing mlflow
 "tests/*" = ["D103"]  # test names already say what they test
 
 [tool.pytest.ini_options]
