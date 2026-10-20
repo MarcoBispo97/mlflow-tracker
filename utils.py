@@ -9,6 +9,7 @@ import hashlib
 import re
 import sqlite3
 import time
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -109,16 +110,8 @@ class BaseTracker:
             mlflow.log_metrics(metrics)
             self.log_charts(model)
             self.log_learning_curve(model)
-            steps = model.steps if hasattr(model, "steps") else [("model", model)]
-            mlflow.log_params(
-                {
-                    "pipeline": " -> ".join(type(step).__name__ for _, step in steps),
-                    "features": ", ".join(self.X_train.columns),
-                    "n_train": len(self.X_train),
-                    "n_test": len(self.X_test),
-                    **self.hyperparameters(model),
-                }
-            )
+            self.log_hyperparameters(name, model)
+            self.log_learned_parameters(model)
 
             # float columns accept missing values when the model is used later
             example = self.X_train.head(5).astype(float)
@@ -172,6 +165,78 @@ class BaseTracker:
             for name, value in model.get_params().items()
             if not hasattr(value, "get_params") and not isinstance(value, list)
         }
+
+    def log_hyperparameters(self, name, model):
+        """Saves every hyperparameter the model used, in two places of the current run.
+
+        - Parameters: one row per hyperparameter, plus the pipeline steps and the data sizes.
+        - ``params/hyperparameters.json``: the same values in one JSON file, easy to read
+          or to rebuild the model from.
+        """
+        steps = model.steps if hasattr(model, "steps") else [("model", model)]
+        pipeline = [type(step).__name__ for _, step in steps]
+        hyperparameters = self.hyperparameters(model)
+        mlflow.log_params(
+            {
+                "pipeline": " -> ".join(pipeline),
+                "features": ", ".join(self.X_train.columns),
+                "n_train": len(self.X_train),
+                "n_test": len(self.X_test),
+                **hyperparameters,
+            }
+        )
+        simple = (str, int, float, bool, type(None))  # JSON types; anything else becomes text
+        mlflow.log_dict(
+            {
+                "model": name,
+                "pipeline": pipeline,
+                "hyperparameters": {
+                    k: v if isinstance(v, simple) else str(v) for k, v in hyperparameters.items()
+                },
+            },
+            "params/hyperparameters.json",
+        )
+
+    @staticmethod
+    def learned_parameters(model):
+        """What the model learned from the data during ``fit``: its parameters.
+
+        scikit-learn names them with a trailing underscore, e.g. ``coef_`` and ``intercept_``
+        of a linear model, ``feature_importances_`` of a tree or ``mean_`` of a scaler.
+        For a pipeline the names are ``<step>__<attribute>``. Big objects (the trees
+        themselves, the stored training rows) are left out.
+        """
+        steps = model.steps if hasattr(model, "steps") else [(type(model).__name__.lower(), model)]
+        learned = {}
+        for step_name, step in steps:
+            for attribute in dir(step):
+                if not attribute.endswith("_") or attribute.startswith("_"):
+                    continue
+                try:
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")  # deprecated attributes
+                        value = getattr(step, attribute)
+                except Exception:  # some attributes only exist for some settings
+                    continue
+                if isinstance(value, np.ndarray) and value.dtype.kind in "biuf":
+                    if value.size > 1000:
+                        continue
+                    value = value.round(6).tolist()
+                elif isinstance(value, np.generic):
+                    value = value.item()
+                elif not isinstance(value, (str, int, float, bool)):
+                    continue
+                learned[f"{step_name}__{attribute}"] = value
+        return learned
+
+    def log_learned_parameters(self, model):
+        """Saves what the fitted model learned in ``params/learned_parameters.json``.
+
+        The short values (up to 250 characters) also go to Parameters as ``learned__<name>``.
+        """
+        learned = self.learned_parameters(model)
+        mlflow.log_dict(learned, "params/learned_parameters.json")
+        mlflow.log_params({f"learned__{k}": v for k, v in learned.items() if len(str(v)) <= 250})
 
     def fingerprint(self, name, model):
         """Short hash of everything that defines a model: name, hyperparameters and data.
@@ -230,8 +295,9 @@ class BaseTracker:
     def log_shap(self, model):
         """Explains the model with SHAP and saves two charts and a CSV.
 
-        Works with any model, because SHAP only calls ``predict_for_shap``.
-        The mean |SHAP| of each feature is also saved as a ``shap_<feature>`` metric.
+        Works with any model, because SHAP only calls ``predict_for_shap``. The mean |SHAP|
+        of all features goes in one CSV (not one metric per feature, which would draw one
+        chart per feature in the MLflow UI); the comparison run reads it to compare models.
         """
 
         def predict(X):  # SHAP passes a numpy array; pipelines need the column names
@@ -248,9 +314,6 @@ class BaseTracker:
             }
         ).sort_values("mean_abs_shap", ascending=False)
         mlflow.log_text(importance.to_csv(index=False), "shap/importance.csv")
-        mlflow.log_metrics(
-            {f"shap_{row.feature}": row.mean_abs_shap for row in importance.itertuples()}
-        )
 
         fig, ax = plt.subplots(figsize=(6, 3))
         sns.barplot(data=importance, x="mean_abs_shap", y="feature", ax=ax)
@@ -349,14 +412,31 @@ class BaseTracker:
         ax.bar_label(ax.containers[0], fmt="%.2f s")
         ax.set(title="Training time", xlabel="seconds", ylabel="")
 
-        # which features each model relies on
-        shap_columns = [c for c in saved.columns if c.startswith("shap_")]
-        importance = saved[shap_columns].rename(columns=lambda c: c.removeprefix("shap_"))
+        # which features each model relies on (read from the shap/importance.csv of each run)
+        importance = pd.DataFrame(
+            {
+                name: pd.read_csv(
+                    mlflow.artifacts.download_artifacts(
+                        run_id=run_id, artifact_path="shap/importance.csv"
+                    )
+                ).set_index("feature")["mean_abs_shap"]
+                for name, run_id in zip(top["model"], top["run_id"], strict=True)
+            }
+        ).T
         fig_shap, ax = plt.subplots(figsize=(8, 4))
         sns.heatmap(importance, annot=True, fmt=".3f", cmap="Reds", cbar=False, ax=ax)
         ax.set(title="Feature importance by model (mean |SHAP|)", xlabel="", ylabel="")
 
-        for fig in (fig_heatmap, fig_ranking, fig_time, fig_shap):
+        # the same values as bars: every feature of every model in one chart
+        bars = importance.reset_index(names="model").melt(
+            id_vars="model", var_name="feature", value_name="mean |SHAP|"
+        )
+        fig_shap_bars, ax = plt.subplots(figsize=(9, 5))
+        sns.barplot(data=bars, x="mean |SHAP|", y="feature", hue="model", ax=ax)
+        ax.set(title="SHAP: feature importance of the top models", ylabel="")
+        ax.legend(fontsize="small")
+
+        for fig in (fig_heatmap, fig_ranking, fig_time, fig_shap, fig_shap_bars):
             fig.tight_layout()
             plt.close(fig)  # returned, not drawn twice
         return {
@@ -366,6 +446,7 @@ class BaseTracker:
             "learning_curves.png": self.plot_learning_curves(n),
             "train_time.png": fig_time,
             "shap_importance.png": fig_shap,
+            "shap_comparison.png": fig_shap_bars,
         }
 
     def log_comparison(self, n=5):

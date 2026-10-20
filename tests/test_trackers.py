@@ -181,8 +181,11 @@ def test_run_all_saves_one_comparison_per_top(regressor):
         "comparison/learning_curves.png",
         "comparison/train_time.png",
         "comparison/shap_importance.png",
+        "comparison/shap_comparison.png",
     }
     assert len(regressor.top_models()) == 2  # the comparison run is not a model
+    model_run = mlflow.get_run(regressor.top_models().loc[0, "run_id"])
+    assert not [m for m in model_run.data.metrics if m.startswith("shap_")]  # SHAP is one CSV
 
     regressor.run_all(models)  # nothing changed -> no new comparison
     assert len(comparison_runs()) == 1
@@ -199,6 +202,20 @@ def test_load_best_model_works_with_missing_values(regressor):
     assert params["pipeline"] == "SimpleImputer -> LinearRegression"
     assert params["simpleimputer__strategy"] == "mean"  # every hyperparameter is saved
     assert params["linearregression__fit_intercept"] == "True"
+
+    saved = mlflow.artifacts.load_dict(
+        f"runs:/{best['run_id']}/params/hyperparameters.json"
+    )  # the same values as a JSON file
+    assert saved["model"] == "Linear"
+    assert saved["pipeline"] == ["SimpleImputer", "LinearRegression"]
+    assert saved["hyperparameters"]["simpleimputer__strategy"] == "mean"
+    assert saved["hyperparameters"]["linearregression__fit_intercept"] is True
+
+    # what the model learned during fit
+    learned = mlflow.artifacts.load_dict(f"runs:/{best['run_id']}/params/learned_parameters.json")
+    assert len(learned["linearregression__coef_"]) == 3  # one weight per feature
+    assert len(learned["simpleimputer__statistics_"]) == 3  # the mean used to fill each column
+    assert "learned__linearregression__intercept_" in params
     new = pd.DataFrame({"a": [0.1, None], "b": [None, 1.0], "c": [0.0, 0.0]})
     assert len(model.predict(new)) == 2
 
