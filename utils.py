@@ -389,7 +389,7 @@ class BaseTracker:
             mlflow.set_tag("top_run_ids", top_ids)
             for file, fig in self.comparison_charts(n).items():
                 log_chart(fig, f"comparison/{file}")
-            mlflow.log_text(top.to_csv(index=False), "comparison/top_models.csv")
+            log_dataframe(top, "comparison/top_models", f"Top {n} models by {self.BEST}")
         make_paths_relative()
         print(f"Top {n} comparison saved (best: {top.loc[0, 'model']})")
 
@@ -418,6 +418,27 @@ def plot_curves(data, hue):
     sns.move_legend(grid, "upper center", bbox_to_anchor=(0.5, 0), ncol=5, title=None)
     grid.figure.suptitle("Learning curve: how the model learns with more data", y=1.05)
     return grid.figure
+
+
+TABLE_CSS = """
+body { font-family: Segoe UI, Arial, sans-serif; font-size: 13px; margin: 12px; }
+table { border-collapse: collapse; }
+th, td { padding: 4px 12px; text-align: right; }
+thead th { border-bottom: 2px solid #333; }
+tbody tr:nth-child(odd) { background: #f5f5f5; }
+tbody tr:hover { background: #e1efff; }
+"""
+
+
+def log_dataframe(df, path, title):
+    """Saves a DataFrame to the current MLflow run as a pandas-style table and a CSV.
+
+    The MLflow UI shows ``<path>.html`` as a table (like a DataFrame in a notebook);
+    ``<path>.csv`` is there to download it.
+    """
+    table = df.to_html(index=False, border=0, na_rep="", float_format="{:.3f}".format)
+    mlflow.log_text(f"<style>{TABLE_CSS}</style><h3>{title}</h3>{table}", f"{path}.html")
+    mlflow.log_text(df.to_csv(index=False), f"{path}.csv")
 
 
 def log_chart(fig, path):

@@ -1,6 +1,8 @@
 """ClassificationTracker: tracks binary classifiers (target 0/1) in MLflow."""
 
 import matplotlib.pyplot as plt
+import mlflow
+import mlflow.data
 import seaborn as sns
 from sklearn.metrics import (
     RocCurveDisplay,
@@ -12,7 +14,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from utils import BaseTracker, log_chart
+from utils import BaseTracker, log_chart, log_dataframe, slug
 
 
 class ClassificationTracker(BaseTracker):
@@ -50,9 +52,10 @@ class ClassificationTracker(BaseTracker):
         }
 
     def log_charts(self, model):
-        """Logs the confusion matrix and the ROC curve on the test set."""
+        """Logs the confusion matrix, the ROC curve and the wrong predictions on the test set."""
         y_pred = model.predict(self.X_test)
         y_score = model.predict_proba(self.X_test)[:, 1]
+        self.log_wrong_predictions(y_pred, y_score)
 
         fig, ax = plt.subplots(figsize=(5, 4))
         sns.heatmap(
@@ -71,6 +74,35 @@ class ClassificationTracker(BaseTracker):
         RocCurveDisplay.from_predictions(self.y_test, y_score, plot_chance_level=True, ax=ax)
         ax.set_title("ROC curve")
         log_chart(fig, "charts/roc_curve.png")
+
+    def log_wrong_predictions(self, y_pred, y_score):
+        """Saves the test rows that the model got wrong, to study its mistakes in MLflow.
+
+        They appear in three places of the run: a pandas-style table in Artifacts
+        (``errors/wrong_predictions.html``, plus a CSV), the ``<project>_wrong_predictions``
+        dataset in the Datasets field, and the ``n_wrong`` metric.
+        """
+        wrong = self.X_test.copy()
+        wrong["actual"] = self.y_test
+        wrong["predicted"] = y_pred
+        wrong["probability"] = y_score.round(3)
+        wrong = wrong[wrong["actual"] != wrong["predicted"]].reset_index(names="row")
+
+        mlflow.log_metric("n_wrong", len(wrong))
+        if wrong.empty:
+            return
+        log_dataframe(
+            wrong,
+            "errors/wrong_predictions",
+            f"Wrong predictions on the test set ({len(wrong)} rows)",
+        )
+        dataset = mlflow.data.from_pandas(
+            wrong,
+            name=f"{slug(self.experiment.name)}_wrong_predictions",
+            targets="actual",
+            source=self.data_source,
+        )
+        mlflow.log_input(dataset, context="wrong_predictions")
 
     def predict_for_shap(self, model, X):
         """SHAP explains the probability of class 1."""

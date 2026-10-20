@@ -79,6 +79,21 @@ def test_classification_run_saves_metrics_and_charts(classifier):
     }
 
 
+def test_classification_saves_wrong_predictions(classifier):
+    classifier.run("LR", LogisticRegression())
+    run_id = classifier.top_models().loc[0, "run_id"]
+    files = {a.path for a in mlflow.MlflowClient().list_artifacts(run_id, "errors")}
+    assert files == {"errors/wrong_predictions.html", "errors/wrong_predictions.csv"}
+
+    csv = mlflow.artifacts.download_artifacts(
+        run_id=run_id, artifact_path="errors/wrong_predictions.csv"
+    )
+    wrong = pd.read_csv(csv)
+    assert len(wrong) == mlflow.get_run(run_id).data.metrics["n_wrong"] > 0
+    assert (wrong["actual"] != wrong["predicted"]).all()
+    assert list(wrong.columns) == ["row", "a", "b", "c", "actual", "predicted", "probability"]
+
+
 def test_regression_run_saves_metrics_and_charts(regressor):
     metrics = regressor.run("Linear", LinearRegression())
     assert set(metrics) == {"mae", "rmse", "r2"}
@@ -102,7 +117,7 @@ def test_run_name_and_datasets(classifier):
     assert run.data.tags["model"] == "K-Nearest Neighbors"
 
     datasets = {d.dataset.name: d.dataset for d in run.inputs.dataset_inputs}
-    assert set(datasets) == {"clf_training", "clf_testing"}
+    assert set(datasets) == {"clf_training", "clf_testing", "clf_wrong_predictions"}
     assert json.loads(datasets["clf_training"].source) == {"uri": "data/clf.csv"}  # relative
 
 
@@ -159,6 +174,7 @@ def test_run_all_saves_one_comparison_per_top(regressor):
     files = {a.path for a in mlflow.MlflowClient().list_artifacts(run_id, "comparison")}
     assert files == {
         "comparison/top_models.csv",
+        "comparison/top_models.html",
         "comparison/top_models.png",
         "comparison/metrics_heatmap.png",
         "comparison/ranking.png",
