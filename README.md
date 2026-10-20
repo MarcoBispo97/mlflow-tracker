@@ -5,7 +5,7 @@
 #### Description:
 
 **MLflow Tracker** trains scikit-learn models and saves *everything* about each one to
-[MLflow](https://mlflow.org): the trained model, all its hyperparameters, its metrics, charts
+[MLflow](https://mlflow.org): the trained model, all its hyperparameters, what it learned (learned parameters), its metrics, charts
 (seaborn/matplotlib), a learning curve and SHAP explanations. It never saves the same model twice,
 it compares the top 5 models automatically, and the whole project can be copied to another
 computer without breaking MLflow.
@@ -75,11 +75,13 @@ flowchart TD
 1. Computes a **fingerprint** (hash of the name, hyperparameters and data). If a run with that
    fingerprint exists, the model is skipped.
 2. Trains the model, then the child class grades it: `compute_metrics()` and `log_charts()`.
-3. Saves the train and test datasets, the model, every hyperparameter, the learning curve and two
+3. Saves the train and test datasets, the model, every hyperparameter and learned parameter
+   (also as JSON in `params/`), the learning curve and two
    SHAP charts in one MLflow run named `<project>_<model>_<date>_<time>`, for example
    `titanic_lightgbm_20261019_201530`.
-4. After all models, saves a **Top 5 comparison** run with 6 charts: metrics bars, metrics heatmap,
-   ranking, learning curves of the 5 models together, training time and SHAP importance per model.
+4. After all models, saves a **Top 5 comparison** run with 7 charts: metrics bars, metrics heatmap,
+   ranking, learning curves of the 5 models together, training time, and SHAP importance per model
+   (as a heatmap and as one bar chart with every feature).
 
 ---
 
@@ -137,7 +139,7 @@ tracker = RegressionTracker(
 tracker.run_all({"Random Forest": RandomForestRegressor(), "Linear": LinearRegression()})
 
 tracker.top_models()          # ranking, best first
-tracker.comparison_charts()   # the 6 charts that compare the top 5
+tracker.comparison_charts()   # the 7 charts that compare the top 5
 model, best_run = tracker.load_best_model()
 ```
 
@@ -177,6 +179,17 @@ each child class fills in three methods (`compute_metrics`, `log_charts` and `pr
 appear in the *Datasets* field of the MLflow UI with their schema, a profile and a hash (digest).
 MLflow stores this description, not the rows: the rows stay in `data/`, and `data_source` is saved
 as a relative path (`data/titanic.csv`), so it is valid on any machine.
+
+**Hyperparameters and learned parameters.** Each run saves every hyperparameter (what you set,
+including the defaults, e.g. `max_depth`) and every learned parameter (what `fit` found in the
+data, e.g. `coef_`, `intercept_`, `feature_importances_`, a scaler's `mean_`). scikit-learn names
+learned parameters with a trailing underscore, so one function collects them for any model. Both
+go to *Parameters* (learned ones as `learned__<name>`) and to `params/hyperparameters.json` and
+`params/learned_parameters.json`.
+
+**One SHAP chart, not one per feature.** The SHAP importance of all features is saved in one CSV
+per run, not as one metric per feature (MLflow would draw a separate chart for each). The comparison
+run puts every feature of the top 5 models in a single chart.
 
 **Studying the mistakes.** For classification, each run saves the test rows the model predicted
 wrong as a pandas-style HTML table (`errors/wrong_predictions.html`, plus a CSV), as a
