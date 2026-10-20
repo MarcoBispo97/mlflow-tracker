@@ -1,0 +1,36 @@
+artifact_path: mlruns/1/models/m-433620bf578e45978954f2f280d5293c/artifacts
+flavors:
+  python_function:
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.sklearn
+    model_path: model.pkl
+    predict_fn: predict
+    python_version: 3.12.10
+  sklearn:
+    code: null
+    pickled_model: model.pkl
+    serialization_format: cloudpickle
+    sklearn_version: 1.9.1
+    skops_trusted_types: null
+is_signature_from_type_hint: false
+mlflow_version: 3.17.0
+model_id: m-433620bf578e45978954f2f280d5293c
+model_size_bytes: 26392
+model_uuid: m-433620bf578e45978954f2f280d5293c
+prompts: null
+run_id: 49b36433e71f416db41b3b097eec3bef
+saved_input_example_info:
+  artifact_path: input_example.json
+  pandas_orient: split
+  serving_input_path: serving_input_example.json
+  type: dataframe
+signature:
+  inputs: '[{"type": "double", "name": "Pclass", "required": true}, {"type": "double",
+    "name": "Sex", "required": true}, {"type": "double", "name": "Age", "required":
+    false}]'
+  outputs: '[{"type": "tensor", "tensor-spec": {"dtype": "int64", "shape": [-1]}}]'
+  params: null
+type_hint_from_example: false
+utc_time_created: '2026-10-20 01:05:23.228275'

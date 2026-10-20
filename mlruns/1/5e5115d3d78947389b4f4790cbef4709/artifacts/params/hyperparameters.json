@@ -1,0 +1,41 @@
+{
+  "model": "Polynomial Logistic Regression",
+  "pipeline": [
+    "SimpleImputer",
+    "StandardScaler",
+    "PolynomialFeatures",
+    "LogisticRegression"
+  ],
+  "hyperparameters": {
+    "memory": null,
+    "transform_input": null,
+    "verbose": false,
+    "simpleimputer__add_indicator": false,
+    "simpleimputer__copy": true,
+    "simpleimputer__fill_value": null,
+    "simpleimputer__keep_empty_features": false,
+    "simpleimputer__missing_values": NaN,
+    "simpleimputer__strategy": "median",
+    "standardscaler__copy": true,
+    "standardscaler__with_mean": true,
+    "standardscaler__with_std": true,
+    "polynomialfeatures__degree": 2,
+    "polynomialfeatures__include_bias": false,
+    "polynomialfeatures__interaction_only": false,
+    "polynomialfeatures__order": "C",
+    "logisticregression__C": 0.5,
+    "logisticregression__class_weight": "balanced",
+    "logisticregression__dual": false,
+    "logisticregression__fit_intercept": true,
+    "logisticregression__intercept_scaling": 1,
+    "logisticregression__l1_ratio": 0.0,
+    "logisticregression__max_iter": 100,
+    "logisticregression__n_jobs": null,
+    "logisticregression__penalty": "deprecated",
+    "logisticregression__random_state": 42,
+    "logisticregression__solver": "lbfgs",
+    "logisticregression__tol": 0.0001,
+    "logisticregression__verbose": 0,
+    "logisticregression__warm_start": false
+  }
+}

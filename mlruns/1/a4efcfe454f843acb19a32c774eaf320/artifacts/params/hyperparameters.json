@@ -1,0 +1,42 @@
+{
+  "model": "LightGBM",
+  "pipeline": [
+    "SimpleImputer",
+    "StandardScaler",
+    "LGBMClassifier"
+  ],
+  "hyperparameters": {
+    "memory": null,
+    "transform_input": null,
+    "verbose": false,
+    "simpleimputer__add_indicator": false,
+    "simpleimputer__copy": true,
+    "simpleimputer__fill_value": null,
+    "simpleimputer__keep_empty_features": false,
+    "simpleimputer__missing_values": NaN,
+    "simpleimputer__strategy": "median",
+    "standardscaler__copy": true,
+    "standardscaler__with_mean": true,
+    "standardscaler__with_std": true,
+    "lgbmclassifier__boosting_type": "gbdt",
+    "lgbmclassifier__class_weight": "balanced",
+    "lgbmclassifier__colsample_bytree": 1.0,
+    "lgbmclassifier__importance_type": "split",
+    "lgbmclassifier__learning_rate": 0.05,
+    "lgbmclassifier__max_depth": -1,
+    "lgbmclassifier__min_child_samples": 10,
+    "lgbmclassifier__min_child_weight": 0.001,
+    "lgbmclassifier__min_split_gain": 0.0,
+    "lgbmclassifier__n_estimators": 150,
+    "lgbmclassifier__n_jobs": null,
+    "lgbmclassifier__num_leaves": 8,
+    "lgbmclassifier__objective": null,
+    "lgbmclassifier__random_state": 42,
+    "lgbmclassifier__reg_alpha": 0.0,
+    "lgbmclassifier__reg_lambda": 0.0,
+    "lgbmclassifier__subsample": 1.0,
+    "lgbmclassifier__subsample_for_bin": 200000,
+    "lgbmclassifier__subsample_freq": 0,
+    "lgbmclassifier__verbose": -1
+  }
+}

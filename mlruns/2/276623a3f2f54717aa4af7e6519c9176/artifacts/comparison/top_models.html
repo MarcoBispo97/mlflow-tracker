@@ -1,0 +1,61 @@
+<style>
+body { font-family: Segoe UI, Arial, sans-serif; font-size: 13px; margin: 12px; }
+table { border-collapse: collapse; }
+th, td { padding: 4px 12px; text-align: right; }
+thead th { border-bottom: 2px solid #333; }
+tbody tr:nth-child(odd) { background: #f5f5f5; }
+tbody tr:hover { background: #e1efff; }
+</style><h3>Top 5 models by rmse</h3><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>model</th>
+      <th>mae</th>
+      <th>rmse</th>
+      <th>r2</th>
+      <th>run_id</th>
+      <th>model_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LightGBM</td>
+      <td>0.297</td>
+      <td>0.450</td>
+      <td>0.846</td>
+      <td>539ee0f1aa0e4e42aa96b30995dd928d</td>
+      <td>m-8b80b6b756e24a42a49a9124b78da680</td>
+    </tr>
+    <tr>
+      <td>Gradient Boosting</td>
+      <td>0.301</td>
+      <td>0.453</td>
+      <td>0.843</td>
+      <td>1143c5194d9b4491bd34feb603169a59</td>
+      <td>m-4b7972cf987c4d8991ad63ccd4599881</td>
+    </tr>
+    <tr>
+      <td>XGBoost</td>
+      <td>0.306</td>
+      <td>0.465</td>
+      <td>0.835</td>
+      <td>f557c55279504c4b9887c6a1c28d24e2</td>
+      <td>m-99cf9b26889947a6ad00cb68e7625512</td>
+    </tr>
+    <tr>
+      <td>Random Forest</td>
+      <td>0.345</td>
+      <td>0.525</td>
+      <td>0.790</td>
+      <td>70596ee0d6a54f55b51b8a2138e3a242</td>
+      <td>m-c4b9b3d5892f4214a72a241bb58207a6</td>
+    </tr>
+    <tr>
+      <td>Decision Tree</td>
+      <td>0.445</td>
+      <td>0.645</td>
+      <td>0.682</td>
+      <td>fbd1ce4fce7742839740c1a83f77c869</td>
+      <td>m-8d9016bbec0a46078d1be970932d6441</td>
+    </tr>
+  </tbody>
+</table>

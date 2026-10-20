@@ -1,0 +1,20 @@
+{
+  "model": "Linear Regression",
+  "pipeline": [
+    "StandardScaler",
+    "LinearRegression"
+  ],
+  "hyperparameters": {
+    "memory": null,
+    "transform_input": null,
+    "verbose": false,
+    "standardscaler__copy": true,
+    "standardscaler__with_mean": true,
+    "standardscaler__with_std": true,
+    "linearregression__copy_X": true,
+    "linearregression__fit_intercept": true,
+    "linearregression__n_jobs": null,
+    "linearregression__positive": false,
+    "linearregression__tol": 1e-06
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "model": "K-Nearest Neighbors",
+  "pipeline": [
+    "SimpleImputer",
+    "StandardScaler",
+    "KNeighborsClassifier"
+  ],
+  "hyperparameters": {
+    "memory": null,
+    "transform_input": null,
+    "verbose": false,
+    "simpleimputer__add_indicator": false,
+    "simpleimputer__copy": true,
+    "simpleimputer__fill_value": null,
+    "simpleimputer__keep_empty_features": false,
+    "simpleimputer__missing_values": NaN,
+    "simpleimputer__strategy": "median",
+    "standardscaler__copy": true,
+    "standardscaler__with_mean": true,
+    "standardscaler__with_std": true,
+    "kneighborsclassifier__algorithm": "auto",
+    "kneighborsclassifier__leaf_size": 30,
+    "kneighborsclassifier__metric": "minkowski",
+    "kneighborsclassifier__metric_params": null,
+    "kneighborsclassifier__n_jobs": null,
+    "kneighborsclassifier__n_neighbors": 15,
+    "kneighborsclassifier__p": 2,
+    "kneighborsclassifier__weights": "uniform"
+  }
+}

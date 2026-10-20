@@ -1,0 +1,37 @@
+{
+  "model": "SVM",
+  "pipeline": [
+    "SimpleImputer",
+    "StandardScaler",
+    "SVC"
+  ],
+  "hyperparameters": {
+    "memory": null,
+    "transform_input": null,
+    "verbose": false,
+    "simpleimputer__add_indicator": false,
+    "simpleimputer__copy": true,
+    "simpleimputer__fill_value": null,
+    "simpleimputer__keep_empty_features": false,
+    "simpleimputer__missing_values": NaN,
+    "simpleimputer__strategy": "median",
+    "standardscaler__copy": true,
+    "standardscaler__with_mean": true,
+    "standardscaler__with_std": true,
+    "svc__C": 1.2,
+    "svc__break_ties": false,
+    "svc__cache_size": 200,
+    "svc__class_weight": "balanced",
+    "svc__coef0": 0.0,
+    "svc__decision_function_shape": "ovr",
+    "svc__degree": 3,
+    "svc__gamma": "scale",
+    "svc__kernel": "rbf",
+    "svc__max_iter": -1,
+    "svc__probability": true,
+    "svc__random_state": 42,
+    "svc__shrinking": true,
+    "svc__tol": 0.001,
+    "svc__verbose": false
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "standardscaler__mean_": [
+    3.880754,
+    28.608285,
+    5.435235,
+    1.096685,
+    1426.453004,
+    3.096961,
+    35.643149,
+    -119.58229
+  ],
+  "standardscaler__n_features_in_": 8,
+  "standardscaler__n_samples_seen_": 16512.0,
+  "standardscaler__scale_": [
+    1.904236,
+    12.602118,
+    2.387303,
+    0.433201,
+    1137.021948,
+    11.578394,
+    2.136601,
+    2.005593
+  ],
+  "standardscaler__var_": [
+    3.626116,
+    158.813371,
+    5.699214,
+    0.187663,
+    1292818.91034,
+    134.059196,
+    4.565062,
+    4.022403
+  ],
+  "kneighborsregressor__effective_metric_": "euclidean",
+  "kneighborsregressor__n_features_in_": 8,
+  "kneighborsregressor__n_samples_fit_": 16512
+}

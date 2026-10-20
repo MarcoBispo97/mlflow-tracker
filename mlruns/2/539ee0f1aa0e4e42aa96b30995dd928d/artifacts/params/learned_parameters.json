@@ -1,0 +1,19 @@
+{
+  "lgbmregressor__best_iteration_": 0,
+  "lgbmregressor__feature_importances_": [
+    1151,
+    736,
+    828,
+    656,
+    743,
+    1186,
+    1845,
+    1855
+  ],
+  "lgbmregressor__fitted_": true,
+  "lgbmregressor__n_estimators_": 300,
+  "lgbmregressor__n_features_": 8,
+  "lgbmregressor__n_features_in_": 8,
+  "lgbmregressor__n_iter_": 300,
+  "lgbmregressor__objective_": "regression"
+}
