@@ -1,1 +1,3 @@
 *.csv text eol=lf
+*.db binary
+*.pkl binary

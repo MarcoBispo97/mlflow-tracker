@@ -4,7 +4,4 @@ __pycache__/
 .DS_Store
 
 # created when you run the project
-mlflow.db
-mlruns/
 mlartifacts/
-overview.png
