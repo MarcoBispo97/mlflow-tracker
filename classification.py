@@ -25,13 +25,16 @@ class ClassificationTracker(BaseTracker):
         y_train: Training target (0/1).
         y_test: Test target (0/1).
         labels: Names of the classes 0 and 1, shown in the charts.
+        data_source: Where the data came from, e.g. ``"data/titanic.csv"``.
     """
 
     METRICS = ["accuracy", "precision", "recall", "f1", "roc_auc"]
     BEST = "f1"
 
-    def __init__(self, experiment_name, X_train, X_test, y_train, y_test, labels=("0", "1")):
-        super().__init__(experiment_name, X_train, X_test, y_train, y_test)
+    def __init__(
+        self, experiment_name, X_train, X_test, y_train, y_test, labels=("0", "1"), data_source=None
+    ):
+        super().__init__(experiment_name, X_train, X_test, y_train, y_test, data_source)
         self.labels = list(labels)
 
     def compute_metrics(self, model, X, y):

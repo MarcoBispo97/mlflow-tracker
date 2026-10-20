@@ -14,6 +14,7 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 import mlflow
+import mlflow.data
 import mlflow.sklearn
 import numpy as np
 import pandas as pd
@@ -34,16 +35,19 @@ class BaseTracker:
         X_test: Test features.
         y_train: Training target.
         y_test: Test target.
+        data_source: Where the data came from, e.g. ``"data/titanic.csv"``. Saved with the
+            datasets of each run; use a relative path so it works on any machine.
     """
 
     METRICS = []  # names of the metrics returned by compute_metrics()
     BEST = None  # metric used to rank the models
     LOWER_IS_BETTER = []  # metrics where a smaller value is better (errors)
 
-    def __init__(self, experiment_name, X_train, X_test, y_train, y_test):
+    def __init__(self, experiment_name, X_train, X_test, y_train, y_test, data_source=None):
         self.experiment = mlflow.set_experiment(experiment_name)
         self.X_train, self.X_test = X_train, X_test
         self.y_train, self.y_test = y_train, y_test
+        self.data_source = data_source
         make_paths_relative()
 
     # ---------- what each child class must define ----------
@@ -97,6 +101,7 @@ class BaseTracker:
 
         with mlflow.start_run(run_name=self.run_name(name)):
             mlflow.set_tag("model", name)
+            self.log_datasets()
             start = time.perf_counter()
             model.fit(self.X_train, self.y_train)
             mlflow.log_metric("train_seconds", time.perf_counter() - start)
@@ -135,6 +140,25 @@ class BaseTracker:
     def run_name(self, name):
         """Project + date and time + model, e.g. ``titanic_20261019_201530_lightgbm``."""
         return f"{slug(self.experiment.name)}_{datetime.now():%Y%m%d_%H%M%S}_{slug(name)}"
+
+    def log_datasets(self):
+        """Logs the training and test data in the "Datasets" field of the current run.
+
+        MLflow saves the schema, a profile and a hash (digest) of each dataset, plus
+        ``data_source``. The rows themselves stay in the CSV file.
+        """
+        target = self.y_train.name or "target"
+        for context, X, y in [
+            ("training", self.X_train, self.y_train),
+            ("testing", self.X_test, self.y_test),
+        ]:
+            dataset = mlflow.data.from_pandas(
+                X.assign(**{target: y}),
+                name=f"{slug(self.experiment.name)}_{context}",
+                targets=target,
+                source=self.data_source,
+            )
+            mlflow.log_input(dataset, context=context)
 
     @staticmethod
     def hyperparameters(model):

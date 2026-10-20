@@ -1,5 +1,6 @@
 """Tests for ClassificationTracker and RegressionTracker, each in an empty MLflow project."""
 
+import json
 import os
 import re
 
@@ -46,7 +47,7 @@ def classifier():
     X, y = make_classification(
         n_samples=200, n_features=3, n_informative=2, n_redundant=0, weights=[0.6], random_state=0
     )
-    return ClassificationTracker("clf", *split(X, y))
+    return ClassificationTracker("clf", *split(X, y), data_source="data/clf.csv")
 
 
 @pytest.fixture
@@ -93,12 +94,16 @@ def test_regression_run_saves_metrics_and_charts(regressor):
     }
 
 
-def test_run_name(classifier):
+def test_run_name_and_datasets(classifier):
     classifier.run("K-Nearest Neighbors", LogisticRegression())
     run = mlflow.get_run(classifier.top_models().loc[0, "run_id"])
     # project + date and time + model, joined by underscores
     assert re.fullmatch(r"clf_\d{8}_\d{6}_k_nearest_neighbors", run.info.run_name)
     assert run.data.tags["model"] == "K-Nearest Neighbors"
+
+    datasets = {d.dataset.name: d.dataset for d in run.inputs.dataset_inputs}
+    assert set(datasets) == {"clf_training", "clf_testing"}
+    assert json.loads(datasets["clf_training"].source) == {"uri": "data/clf.csv"}  # relative
 
 
 def test_learning_curve_has_one_point_per_size(regressor):

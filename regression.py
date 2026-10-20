@@ -16,6 +16,7 @@ class RegressionTracker(BaseTracker):
         X_test: Test features.
         y_train: Training target (numbers).
         y_test: Test target (numbers).
+        data_source: Where the data came from, e.g. ``"data/house_prices.csv"``.
     """
 
     METRICS = ["mae", "rmse", "r2"]
