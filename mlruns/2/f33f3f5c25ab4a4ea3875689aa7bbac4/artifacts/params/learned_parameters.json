@@ -1,0 +1,15 @@
+{
+  "decisiontreeregressor__feature_importances_": [
+    0.675052,
+    0.04345,
+    0.031902,
+    0.005982,
+    0.003678,
+    0.135917,
+    0.057279,
+    0.046738
+  ],
+  "decisiontreeregressor__max_features_": 8,
+  "decisiontreeregressor__n_features_in_": 8,
+  "decisiontreeregressor__n_outputs_": 1
+}

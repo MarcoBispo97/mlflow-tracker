@@ -1,3 +1,4 @@
+# Written with help from Claude (Anthropic's AI assistant); see "AI usage" in README.md.
 """Tests for ClassificationTracker and RegressionTracker, each in an empty MLflow project."""
 
 import json
@@ -138,6 +139,13 @@ def test_fingerprint_changes_with_name_params_and_data(classifier):
     c = classifier
     other = ClassificationTracker("clf", c.X_train.iloc[1:], c.X_test, c.y_train.iloc[1:], c.y_test)
     assert base != other.fingerprint("LR", LogisticRegression(C=1.0))
+
+
+def test_fingerprint_is_the_same_on_every_os(classifier, monkeypatch):
+    monkeypatch.setattr(os, "linesep", "\r\n")  # like Windows
+    windows = classifier.fingerprint("LR", LogisticRegression())
+    monkeypatch.setattr(os, "linesep", "\n")  # like Linux and macOS
+    assert classifier.fingerprint("LR", LogisticRegression()) == windows
 
 
 def test_same_model_is_not_saved_twice(classifier):

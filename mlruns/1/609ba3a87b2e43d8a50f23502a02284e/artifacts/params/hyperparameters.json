@@ -1,0 +1,35 @@
+{
+  "model": "Decision Tree",
+  "pipeline": [
+    "SimpleImputer",
+    "StandardScaler",
+    "DecisionTreeClassifier"
+  ],
+  "hyperparameters": {
+    "memory": null,
+    "transform_input": null,
+    "verbose": false,
+    "simpleimputer__add_indicator": false,
+    "simpleimputer__copy": true,
+    "simpleimputer__fill_value": null,
+    "simpleimputer__keep_empty_features": false,
+    "simpleimputer__missing_values": NaN,
+    "simpleimputer__strategy": "median",
+    "standardscaler__copy": true,
+    "standardscaler__with_mean": true,
+    "standardscaler__with_std": true,
+    "decisiontreeclassifier__ccp_alpha": 0.0,
+    "decisiontreeclassifier__class_weight": "balanced",
+    "decisiontreeclassifier__criterion": "gini",
+    "decisiontreeclassifier__max_depth": 4,
+    "decisiontreeclassifier__max_features": null,
+    "decisiontreeclassifier__max_leaf_nodes": null,
+    "decisiontreeclassifier__min_impurity_decrease": 0.0,
+    "decisiontreeclassifier__min_samples_leaf": 4,
+    "decisiontreeclassifier__min_samples_split": 2,
+    "decisiontreeclassifier__min_weight_fraction_leaf": 0.0,
+    "decisiontreeclassifier__monotonic_cst": null,
+    "decisiontreeclassifier__random_state": 42,
+    "decisiontreeclassifier__splitter": "best"
+  }
+}

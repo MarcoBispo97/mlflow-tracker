@@ -1,3 +1,4 @@
+# Written with help from Claude (Anthropic's AI assistant); see "AI usage" in README.md.
 """RegressionTracker: tracks regression models (numeric target) in MLflow."""
 
 import matplotlib.pyplot as plt

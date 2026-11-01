@@ -1,0 +1,41 @@
+{
+  "model": "Random Forest",
+  "pipeline": [
+    "SimpleImputer",
+    "StandardScaler",
+    "RandomForestClassifier"
+  ],
+  "hyperparameters": {
+    "memory": null,
+    "transform_input": null,
+    "verbose": false,
+    "simpleimputer__add_indicator": false,
+    "simpleimputer__copy": true,
+    "simpleimputer__fill_value": null,
+    "simpleimputer__keep_empty_features": false,
+    "simpleimputer__missing_values": NaN,
+    "simpleimputer__strategy": "median",
+    "standardscaler__copy": true,
+    "standardscaler__with_mean": true,
+    "standardscaler__with_std": true,
+    "randomforestclassifier__bootstrap": true,
+    "randomforestclassifier__ccp_alpha": 0.0,
+    "randomforestclassifier__class_weight": "balanced",
+    "randomforestclassifier__criterion": "gini",
+    "randomforestclassifier__max_depth": 5,
+    "randomforestclassifier__max_features": "sqrt",
+    "randomforestclassifier__max_leaf_nodes": null,
+    "randomforestclassifier__max_samples": null,
+    "randomforestclassifier__min_impurity_decrease": 0.0,
+    "randomforestclassifier__min_samples_leaf": 4,
+    "randomforestclassifier__min_samples_split": 2,
+    "randomforestclassifier__min_weight_fraction_leaf": 0.0,
+    "randomforestclassifier__monotonic_cst": null,
+    "randomforestclassifier__n_estimators": 200,
+    "randomforestclassifier__n_jobs": null,
+    "randomforestclassifier__oob_score": false,
+    "randomforestclassifier__random_state": 42,
+    "randomforestclassifier__verbose": 0,
+    "randomforestclassifier__warm_start": false
+  }
+}

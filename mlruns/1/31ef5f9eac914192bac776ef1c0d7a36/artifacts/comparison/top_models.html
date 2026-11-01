@@ -1,0 +1,73 @@
+<style>
+body { font-family: Segoe UI, Arial, sans-serif; font-size: 13px; margin: 12px; }
+table { border-collapse: collapse; }
+th, td { padding: 4px 12px; text-align: right; }
+thead th { border-bottom: 2px solid #333; }
+tbody tr:nth-child(odd) { background: #f5f5f5; }
+tbody tr:hover { background: #e1efff; }
+</style><h3>Top 5 models by f1</h3><table class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>model</th>
+      <th>accuracy</th>
+      <th>precision</th>
+      <th>recall</th>
+      <th>f1</th>
+      <th>roc_auc</th>
+      <th>run_id</th>
+      <th>model_id</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>LightGBM</td>
+      <td>0.798</td>
+      <td>0.724</td>
+      <td>0.766</td>
+      <td>0.745</td>
+      <td>0.840</td>
+      <td>782edd37bc784411a89e97a37f861ad8</td>
+      <td>m-c48f168afcaa4343939355fcca38d345</td>
+    </tr>
+    <tr>
+      <td>Polynomial Logistic Regression</td>
+      <td>0.793</td>
+      <td>0.709</td>
+      <td>0.781</td>
+      <td>0.743</td>
+      <td>0.853</td>
+      <td>260c2dd0075448bf91703bb779ba2f65</td>
+      <td>m-afacc92734e0423e98a6f2c4948ee19c</td>
+    </tr>
+    <tr>
+      <td>SVM</td>
+      <td>0.804</td>
+      <td>0.752</td>
+      <td>0.730</td>
+      <td>0.741</td>
+      <td>0.840</td>
+      <td>91347d906ae04f66841aeae5a0bb641a</td>
+      <td>m-506d0071fddd4ad1947d94011fbc382e</td>
+    </tr>
+    <tr>
+      <td>Decision Tree</td>
+      <td>0.779</td>
+      <td>0.675</td>
+      <td>0.818</td>
+      <td>0.739</td>
+      <td>0.834</td>
+      <td>609ba3a87b2e43d8a50f23502a02284e</td>
+      <td>m-0aa63e4a55d74ee4904af7ce15fd2148</td>
+    </tr>
+    <tr>
+      <td>XGBoost</td>
+      <td>0.796</td>
+      <td>0.725</td>
+      <td>0.752</td>
+      <td>0.738</td>
+      <td>0.843</td>
+      <td>513a54d3889845849c2d8e631372b749</td>
+      <td>m-9ded5bde09174f228b02f0664c1a431d</td>
+    </tr>
+  </tbody>
+</table>

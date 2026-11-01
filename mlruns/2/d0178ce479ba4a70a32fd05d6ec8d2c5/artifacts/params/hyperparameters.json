@@ -1,0 +1,23 @@
+{
+  "model": "K-Nearest Neighbors",
+  "pipeline": [
+    "StandardScaler",
+    "KNeighborsRegressor"
+  ],
+  "hyperparameters": {
+    "memory": null,
+    "transform_input": null,
+    "verbose": false,
+    "standardscaler__copy": true,
+    "standardscaler__with_mean": true,
+    "standardscaler__with_std": true,
+    "kneighborsregressor__algorithm": "auto",
+    "kneighborsregressor__leaf_size": 30,
+    "kneighborsregressor__metric": "minkowski",
+    "kneighborsregressor__metric_params": null,
+    "kneighborsregressor__n_jobs": null,
+    "kneighborsregressor__n_neighbors": 10,
+    "kneighborsregressor__p": 2,
+    "kneighborsregressor__weights": "uniform"
+  }
+}

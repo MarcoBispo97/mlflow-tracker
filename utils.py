@@ -1,3 +1,4 @@
+# Written with help from Claude (Anthropic's AI assistant); see "AI usage" in README.md.
 """BaseTracker: the MLflow work shared by ClassificationTracker and RegressionTracker.
 
 A tracker trains scikit-learn models and saves everything about each one to MLflow
@@ -243,10 +244,12 @@ class BaseTracker:
         """Short hash of everything that defines a model: name, hyperparameters and data.
 
         If any of them changes, the fingerprint changes and the model is trained again.
+        It is the same on every OS, so a model saved on Windows is found on Linux.
         """
         text = name + str(model.get_params())
         for part in (self.X_train, self.X_test, self.y_train, self.y_test):
-            text += part.to_csv()
+            # "\n" on every OS (pandas would use "\r\n" on Windows and "\n" on Linux)
+            text += part.to_csv(lineterminator="\n")
         return hashlib.sha256(text.encode()).hexdigest()[:16]
 
     # ---------- learning curve ----------

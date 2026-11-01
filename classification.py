@@ -1,3 +1,4 @@
+# Written with help from Claude (Anthropic's AI assistant); see "AI usage" in README.md.
 """ClassificationTracker: tracks binary classifiers (target 0/1) in MLflow."""
 
 import matplotlib.pyplot as plt

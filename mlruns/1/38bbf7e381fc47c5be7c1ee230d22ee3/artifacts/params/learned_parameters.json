@@ -1,0 +1,37 @@
+{
+  "simpleimputer__n_features_in_": 3,
+  "simpleimputer__statistics_": [
+    3.0,
+    0.0,
+    29.0
+  ],
+  "standardscaler__mean_": [
+    2.316479,
+    0.355805,
+    30.118296
+  ],
+  "standardscaler__n_features_in_": 3,
+  "standardscaler__n_samples_seen_": 534.0,
+  "standardscaler__scale_": [
+    0.834099,
+    0.478757,
+    13.000103
+  ],
+  "standardscaler__var_": [
+    0.695721,
+    0.229208,
+    169.002672
+  ],
+  "randomforestclassifier__classes_": [
+    0,
+    1
+  ],
+  "randomforestclassifier__feature_importances_": [
+    0.221586,
+    0.492731,
+    0.285683
+  ],
+  "randomforestclassifier__n_classes_": 2,
+  "randomforestclassifier__n_features_in_": 3,
+  "randomforestclassifier__n_outputs_": 1
+}

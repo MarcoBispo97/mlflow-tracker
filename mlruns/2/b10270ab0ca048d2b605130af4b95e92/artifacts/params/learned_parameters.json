@@ -1,0 +1,14 @@
+{
+  "randomforestregressor__feature_importances_": [
+    0.580805,
+    0.049122,
+    0.032644,
+    0.016379,
+    0.016476,
+    0.139082,
+    0.082833,
+    0.082658
+  ],
+  "randomforestregressor__n_features_in_": 8,
+  "randomforestregressor__n_outputs_": 1
+}
